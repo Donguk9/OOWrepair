@@ -1,52 +1,98 @@
 import pandas as pd
-import requests
+from playwright.sync_api import sync_playwright
+from datetime import datetime
+import time
 
-def get_samsung_repair_price():
-    url = "https://www.samsung.com/us/support/cracked-screen-repair"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+# [핵심] 사이트별 행동 지침서 (50개까지 확장 가능)
+site_configs = [
+    {
+        "country": "US",
+        "url": "https://www.samsung.com/us/support/cracked-screen-repair",
+        "type": "table",
+        "target_model": "Galaxy S26 Ultra",
+        "wait_selector": "table" # 표가 나타날 때까지 대기
+    },
+    {
+        "country": "TH (Thailand)",
+        "url": "https://www.samsung.com/th/support/repair-cost",
+        "type": "interaction",
+        "target_model": "Galaxy S26 Ultra",
+        "steps": [
+            {"action": "click", "selector": "#product-type-select", "value": "Smartphone"},
+            {"action": "type", "selector": "#model-search", "value": "Galaxy S26 Ultra"}
+        ]
+    },
+    {
+        "country": "BR (Brazil)",
+        "url": "https://www.samsung.com/br/support/valorreparo",
+        "type": "interaction",
+        "target_model": "Galaxy S26 Ultra",
+        "steps": [
+            {"action": "click", "selector": "text=Smartphone"},
+            {"action": "click", "selector": "text=S Series"}
+        ]
     }
+]
 
-    try:
-        # 1. HTML 가져오기 (requests 이용)
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
+# 사내 AI 서비스 연동 함수 (가상의 함수)
+def ask_internal_ai(raw_text, model_name):
+    """
+    사내 AI API를 호출하여 지저분한 텍스트에서 가격 정보만 추출합니다.
+    """
+    print(f"--- [AI] {model_name} 가격 정보 분석 중... ---")
+    # TODO: 여기에 사내 AI API 호출 로직을 넣으세요 (requests.post 등)
+    # 예시 프롬프트: "다음 텍스트에서 {model_name}의 Screen Repair 가격만 추출해줘"
+    return f"AI 추출 결과: {raw_text[:50]}..." # 임시 반환값
 
-        # 2. Pandas로 모든 표 읽기
-        # [match='Galaxy S26'] 옵션을 주면 해당 텍스트가 포함된 표만 골라옵니다.
-        tables = pd.read_html(response.text)
-        
-        target_price = None
+def run_automation():
+    results = []
 
-        for df in tables:
-            # 컬럼명 정리 (공백 제거 등)
-            df.columns = [col.strip() for col in df.columns]
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False) # 로컬 확인을 위해 창을 띄움
+        context = browser.new_context()
+        page = context.new_page()
 
-            # 'Galaxy S26 Ultra'가 포함된 행 찾기
-            # 첫 번째 열(보통 모델명)에서 검색
-            mask = df.iloc[:, 0].str.contains('Galaxy S26 Ultra', case=False, na=False)
-            
-            if mask.any():
-                # 'Screen Repair' 컬럼 데이터만 추출
-                # 만약 컬럼명이 정확히 일치하지 않을 수 있으므로 'Screen'이 포함된 열 찾기
-                screen_col = [c for c in df.columns if 'Screen' in c and 'Module' not in c]
+        for config in site_configs:
+            try:
+                print(f"[{config['country']}] 접속 중...")
+                page.goto(config['url'], wait_until="networkidle")
+                time.sleep(3) # 안정적인 로딩을 위해 잠시 대기
+
+                # 1. 사이트별 인터랙션 수행 (드롭다운 등)
+                if config['type'] == "interaction":
+                    for step in config.get('steps', []):
+                        if step['action'] == "click":
+                            page.click(step['selector'])
+                        elif step['action'] == "type":
+                            page.fill(step['selector'], step['value'])
+                        time.sleep(1)
+
+                # 2. 결과 텍스트 긁기 (가장 넓은 범위의 컨테이너 지정)
+                # 사이트마다 가격이 표시되는 영역의 ID나 Class를 적절히 지정
+                raw_content = page.content() # 전체 HTML을 긁거나 특정 영역 지정
                 
-                if screen_col:
-                    price_val = df.loc[mask, screen_col[0]].values[0]
-                    target_price = str(price_val).strip()
-                    break
+                # 3. 사내 AI를 통해 정밀 분석
+                final_price = ask_internal_ai(raw_content, config['target_model'])
 
-        if target_price:
-            print(f"✅ 검색 결과: Galaxy S26 Ultra 단품 수리비 = {target_price}")
-            # 가격이 '-' 인 경우에 대한 처리
-            if target_price == '-':
-                print("⚠️ 현재 단품 수리비가 공지되지 않았습니다 (기호: -)")
-            return target_price
-        else:
-            print("❌ 해당 모델을 찾을 수 없습니다.")
+                results.append({
+                    "Date": datetime.now().strftime("%Y-%m-%d"),
+                    "Country": config['country'],
+                    "Model": config['target_model'],
+                    "Price": final_price,
+                    "Status": "Success"
+                })
 
-    except Exception as e:
-        print(f"🚨 오류 발생: {e}")
+            except Exception as e:
+                print(f"[{config['country']}] 실패: {e}")
+                results.append({"Country": config['country'], "Status": "Error", "Error": str(e)})
+
+        browser.close()
+
+    # 4. 엑셀 저장
+    df = pd.DataFrame(results)
+    file_name = f"repair_prices_{datetime.now().strftime('%y%m%d')}.xlsx"
+    df.to_excel(file_name, index=False)
+    print(f"✅ 저장 완료: {file_name}")
 
 if __name__ == "__main__":
-    price = get_samsung_repair_price()
+    run_automation()
