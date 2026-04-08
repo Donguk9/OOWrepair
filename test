@@ -9,41 +9,21 @@ html_doc
 soup = BeautifulSoup(html_doc, 'html.parser')
 soup
 
-urllib3.exceptions.SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1028)
+pip 세팅
+1) HTTP_PROXY, HTTPS_PROXY 환경변수 설정
+ㄱ. 제어판 > 시스템 환경 변수 편집 > 시스템 변수 > 새로 만들기 에서 추가하거나
+      변수 이름 : HTTP_PROXY / 변수 값 :http://168.219.61.252:8080
+      변수 이름 : HTTPS_PROXY / 변수 값 :http://168.219.61.252:8080
+ㄴ. 윈도우+R > cmd 입력 엔터 > 아래 명령어 입력
+      set HTTP_PROXY=http://168.219.61.252:8080
+      set HTTPS_PROXY=http://168.219.61.252:8080
 
-The above exception was the direct cause of the following exception:
 
-Traceback (most recent call last):
-  File "C:\Users\donguk.koo\Desktop\유상수리비\.venv\Lib\site-packages\requests\adapters.py", line 645, in send
-    resp = conn.urlopen(
-        method=request.method,
-    ...<9 lines>...
-        chunked=chunked,
-    )
-  File "C:\Users\donguk.koo\Desktop\유상수리비\.venv\Lib\site-packages\urllib3\connectionpool.py", line 841, in urlopen
-    retries = retries.increment(
-        method, url, error=new_e, _pool=self, _stacktrace=sys.exc_info()[2]
-    )
-  File "C:\Users\donguk.koo\Desktop\유상수리비\.venv\Lib\site-packages\urllib3\util\retry.py", line 535, in increment
-    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='news.kbs.co.kr', port=443): Max retries exceeded with url: /news/pc/view/view.do?ncd=8529433 (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1028)')))
+2) 이후 패키지 설치 시마다 아래 명령어 입력
+pip install \\\패키지명\\\ --proxyhttp://168.219.61.252:8080 --trusted-hostpypi.org --trusted-hostfiles.pythonhosted.org
 
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "C:\Users\donguk.koo\Desktop\유상수리비\test.py", line 6, in <module>
-    html_doc = requests.get(url).text
-               ~~~~~~~~~~~~^^^^^
-  File "C:\Users\donguk.koo\Desktop\유상수리비\.venv\Lib\site-packages\requests\api.py", line 73, in get
-    return request("get", url, params=params, **kwargs)
-  File "C:\Users\donguk.koo\Desktop\유상수리비\.venv\Lib\site-packages\requests\api.py", line 59, in request
-    return session.request(method=method, url=url, **kwargs)
-           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\donguk.koo\Desktop\유상수리비\.venv\Lib\site-packages\requests\sessions.py", line 592, in request
-    resp = self.send(prep, **send_kwargs)
-  File "C:\Users\donguk.koo\Desktop\유상수리비\.venv\Lib\site-packages\requests\sessions.py", line 706, in send
-    r = adapter.send(request, **kwargs)
-  File "C:\Users\donguk.koo\Desktop\유상수리비\.venv\Lib\site-packages\requests\adapters.py", line 676, in send
-    raise SSLError(e, request=request)
-requests.exceptions.SSLError: HTTPSConnectionPool(host='news.kbs.co.kr', port=443): Max retries exceeded with url: /news/pc/view/view.do?ncd=8529433 (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1028)')))
+3)위 명령어를 매번 입력하고 싶지 않다면 ~/AppData/Roaming/pip/pip.ini 에 아래 변수 입력
+ㄱ. 터미널 창에 아래 명령어 입력
+      pip config set global.trusted-host "pypi.python.orgpypi.orgfiles.pythonhosted.org"
+      pip config set global.proxy http://168.219.61.252:8080
+ㄴ. code ~/AppData/Roaming/pip/pip.ini 하여 잘 세팅되었는지 확인
