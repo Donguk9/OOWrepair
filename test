@@ -1,17 +1,10 @@
-import asyncio
-from playwright.async_api import async_playwright
+import requests
+from bs4 import BeautifulSoup
 
-async def main():
-    print("브라우저 실행을 시도합니다...")
-    async with async_playwright() as p:
-        # headless=False로 해야 눈에 보입니다.
-        browser = await p.chromium.launch(headless=False)
-        page = await browser.new_page()
-        await page.goto("https://www.google.com")
-        print("페이지 접속 성공!")
-        await asyncio.sleep(5) # 5초 동안 브라우저 유지
-        await browser.close()
+# url = "https://www.samsung.com/us/support/cracked-screen-repair/"
+url = "https://news.kbs.co.kr/news/pc/view/view.do?ncd=8529433"
+html_doc = requests.get(url).text
+html_doc
 
-if __name__ == "__main__":
-    # 여기서 에러가 난다면 asyncio.py 파일이 폴더에 있는지 다시 확인하세요!
-    asyncio.run(main())
+soup = BeautifulSoup(html_doc, 'html.parser')
+soup
