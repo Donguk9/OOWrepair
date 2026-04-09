@@ -1,0 +1,100 @@
+import requests
+import os
+from bs4 import BeautifulSoup
+import urllib3
+import pandas as pd
+import numpy as np
+import re
+
+# SSL 경고 off, 프록시 설정
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+os.environ['HTTP_PROXY'] = 'http://168.219.61.252:8080'
+os.environ['HTTPS_PROXY'] = 'http://168.219.61.252:8080'
+os.environ['NO_PROXY'] = 'localhost,127.0.0.1,.sec.samsung.net'
+
+# Exchange Rate
+rate_df = pd.read_excel("exchange_rate.xlsx")
+
+# 가격 clean 로직
+def clean_price(price):
+    if pd.isna(price):
+        return np.nan
+    price = price.strip()
+    if price == "-": return np.nan
+    if price == "n/a": return np.nan
+    if "|" in price:
+        price = price.split("|")[1].strip()
+    price = re.sub(r"[^\d.]","",price)
+    
+    try:
+        return float(price)
+    except:
+        return np.nan()
+
+# 1. 캐나다
+url = "https://www.samsung.com/ca/support/Out-of-Warranty-Pricing/"
+html_doc = requests.get(url).text
+subs = 'SECA'
+soup = BeautifulSoup(html_doc, 'html.parser')
+tables = soup.find_all('table')
+
+all_data = []
+for table in tables:
+    current_series = None
+
+    rows = table.find_all('tr')[1:]
+
+    for row in rows:
+        if row.find(["td","th"], class_ = "sub_table_header"): continue
+        cols = row.find_all(["td","th"])
+        cols = [col.get_text(strip=True) for col in cols]
+
+        if len(cols)==4:
+            current_series = cols[0]
+            model = cols[1]
+            repair_price = cols[2]
+            module_price = cols[3]
+
+            all_data.append([
+                subs,
+                "Screen Repair",
+                current_series,
+                model,
+                repair_price,
+                url])
+
+            all_data.append([
+                subs,
+                "Module Replacement",
+                current_series,
+                model,
+                module_price,
+                url])            
+        
+        elif len(cols)==3:
+            current_series = cols[0]
+            model = cols[1]
+            repair_price = cols[2]  
+
+            all_data.append([
+                subs,
+                "Repair",
+                current_series,
+                model,
+                repair_price,
+                url])   
+
+        else : continue
+
+
+df = pd.DataFrame(all_data, columns=["Subsidiary", "Repair Type", "Category", "Model", "Price", "URL"])
+df["Price"] = df["Price"].apply(clean_price)
+df = df.merge(rate_df, on="Subsidiary", how = "left")
+df["Price_USD"]= df["Price"] / df["Exchange"]
+print(df)
+
+df.to_excel("result_SECA.xlsx", index=False)
+# df_seca = seca()
+# df_seca.to_excel("result.xlsx", index=False)
+# print(rate_df)
