@@ -1,0 +1,52 @@
+def sesg():
+    url = "https://www.samsung.com/ch/support/mobile-devices/display-reparaturkosten/"
+    html_doc = requests.get(url).text
+    subs = 'SESG'
+    soup = BeautifulSoup(html_doc, 'html.parser')
+    tables = soup.find_all('table')
+
+    all_data = []
+    for table in tables:
+        header_row = table.find('tr')
+        h_cols = [th.get_text(strip=True).lower() for th in header_row.find_all(["th","td"])]
+
+        # "Screen Repair" 위치 찾기
+        screen_index = -1
+        module_index = -1
+        inner_index = -1
+        outer_index = -1
+
+        for i, text in enumerate(h_cols):
+            if any(k in text for k in ["Displayreparatur ohne Rahmen"]):
+                screen_index = i
+            elif any(k in text for k in ["Displayreparatur"]):
+                module_index = i
+            elif any(k in text for k in ["Innendisplay"]):
+                inner_index = i
+            elif any(k in text for k in ["Frontdisplay"]):
+                outer_index = i
+
+        rows = table.find_all('tr')[1:]
+        for row in rows:
+            cols = [col.get_text(strip=True) for col in row.find_all(["td", "th"])]
+            model = cols[0]
+
+            if screen_index != -1:
+                repair_price = cols[screen_index]
+                all_data.append([subs,"Screen Repair",model,model,repair_price,url])
+            if module_index != -1:
+                repair_price = cols[module_index]
+                all_data.append([subs,"Module Replacement",model,model,repair_price,url])      
+            if inner_index != -1:
+                repair_price = cols[inner_index]
+                all_data.append([subs,"Inner Screen",model,model,repair_price,url])
+            if outer_index != -1:
+                repair_price = cols[outer_index]
+                all_data.append([subs,"Outer Screen",model,model,repair_price,url])    
+
+    df = pd.DataFrame(all_data, columns=["Subsidiary", "Repair Type", "Series", "Model", "Price", "URL"])
+    df["Price"] = df["Price"].apply(clean_price)
+    df = df.merge(rate_df, on="Subsidiary", how = "left")
+    df["Price_USD"]= df["Price"] / df["Exchange"]
+    print(df)
+    return df
