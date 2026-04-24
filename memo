@@ -25,3 +25,28 @@ https://support.apple.com/en-my/iphone/repair?services=service
 https://support.apple.com/en-in/iphone/repair?services=service
 https://support.apple.com/en-ae/iphone/repair?services=service
 https://support.apple.com/tr-tr/iphone/repair?services=service
+
+# 디버깅용 함수: 원본과 결과, 그리고 특수문자 존재 여부를 알려줌
+def debug_model_cleaning(df, column_name='Model'):
+    print(f"{'='*20} 모델명 세척 디버깅 시작 {'='*20}")
+    
+    results = []
+    for original in df[column_name].unique()[:20]:  # 상위 20개 고유값만 테스트
+        cleaned = robust_model_clean(original) # 위에서 만든 함수 호출
+        
+        # 특수 공백(\xa0 등)이 있는지 확인
+        has_special_space = '\\x' in repr(original)
+        
+        results.append({
+            'Original': original,
+            'Cleaned': cleaned,
+            'Special Char': 'Yes' if has_special_space else 'No',
+            'Raw Data': repr(original) # 숨겨진 문자 확인용
+        })
+    
+    debug_df = pd.DataFrame(results)
+    print(debug_df.to_string(index=False))
+    print(f"{'='*60}\n")
+
+# 함수 실행 전 호출해서 확인
+debug_model_cleaning(final_df)
