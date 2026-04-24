@@ -1,0 +1,68 @@
+def sem():
+    url = "https://www.samsung.com/mx/support/price-list/"
+    html_doc = requests.get(url).text
+    subs = "SEM"
+
+    def clean_price_mx(price):
+        if pd.isna(price):
+            return np.nan
+        price = price.strip()
+        if price in ["-", "n/a", "null", "", "#VALOR!"]: return np.nan
+        if "|" in price:
+            price = price.split("|")[1].strip()
+
+        price = re.sub(r"[^\d,.]","",price)
+        if ',' in price:
+            price = price.replace('.','')
+            price = price.replace(',', '.')
+        
+        try:
+            return float(price)
+        except:
+            return np.nan()
+
+    start_pattern = re.search(r'var\s+obj\s*=\s*\[', html_doc)
+
+    if start_pattern:
+        start_index = start_pattern.start()
+        content_start = html_doc.find('[', start_index)
+        bracket_count = 0
+        end_index = -1
+        for i in range(content_start, len(html_doc)):
+            if html_doc[i] == '[':
+                bracket_count +=1
+            elif html_doc[i] == ']':
+                bracket_count -= 1
+            if bracket_count == 0:
+                end_index = i + 1
+                break
+        
+        if end_index != -1:
+            raw_json_str = html_doc[content_start:end_index]
+            try:
+                fixed_json_str = re.sub(r'([{,]\s*)([a-zA-Z0-9_]+)\s*:', r'\1"\2":', raw_json_str)
+                data_list = json.loads(fixed_json_str)
+                df = pd.DataFrame(data_list)
+                print(f"추출 성공! 총 {len(df)}개의 모델 데이터를 찾았습니다.")
+            except Exception as e:
+                print("JSON 파싱 중 오류가 발생했습니다.")
+        else:
+            print("닫는 괄호를 찾지 못했습니다.")
+    else: 
+        print("소스 코드에서 'var items' 변수를 찾지 못했습니다.")
+
+    final_df = pd.DataFrame(columns=["Subsidiary", "Repair Type", "Series", "Model", "Price", "URL"])
+    final_df['Repair Type'] = df['reparacion']
+    final_df['Model'] = df['display_name']
+    final_df['Price'] = df['precio'].apply(clean_price_mx)
+    final_df['URL'] = url
+    final_df['Subsidiary'] = subs
+
+    final_df = final_df.merge(rate_df, on="Subsidiary", how = "left")
+    final_df["Price_USD"]= final_df["Price"] / final_df["Exchange"]
+    print(final_df)
+    return final_df
+
+final_df = sem()
+print(final_df)
+final_df.to_excel('result_SEM.xlsx')
