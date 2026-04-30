@@ -62,7 +62,7 @@ def get_column_map(header_cells):
 # 법인별 로직
 def sea():
     url = "https://www.samsung.com/us/support/cracked-screen-repair/"
-    html_doc = requests.get(url).text
+    html_doc = requests.get(url, verify = False).text
     subs = 'SEA'
     soup = BeautifulSoup(html_doc, 'html.parser')
     tables = soup.find_all('table')
@@ -114,7 +114,7 @@ def sea():
 def seca():
     
     url = "https://www.samsung.com/ca/support/Out-of-Warranty-Pricing/"
-    html_doc = requests.get(url).text
+    html_doc = requests.get(url, verify = False).text
     subs = 'SECA'
     soup = BeautifulSoup(html_doc, 'html.parser')
     tables = soup.find_all('table')
@@ -157,7 +157,7 @@ def seca():
     return df
 def seda():
     url = "https://www.samsung.com/br/support/valorreparo/"
-    html_doc = requests.get(url).text
+    html_doc = requests.get(url, verify = False).text
     subs = "SEDA"
 
     def clean_price_br(price):
@@ -222,7 +222,7 @@ def seda():
 
 def sem():
     url = "https://www.samsung.com/mx/support/price-list/"
-    html_doc = requests.get(url).text
+    html_doc = requests.get(url, verify = False).text
     subs = "SEM"
 
     def clean_price_mx(price):
@@ -290,7 +290,7 @@ def sem():
 
 def samcol():
     url = "https://www.samsung.com/co/campaign/cost-and-spares/"
-    html_doc = requests.get(url).text
+    html_doc = requests.get(url, verify = False).text
     subs = "SAMCOL"
 
     pattern = re.compile(r'var\s+obj\s*=\s\[(.*?)\]', re.DOTALL)
@@ -323,7 +323,7 @@ def samcol():
 
 def sep():
     url = "https://www.samsung.com/pt/support/reparacoes-fora-de-garantia/"
-    html_doc = requests.get(url).text
+    html_doc = requests.get(url, verify = False).text
     subs = 'SEP'
     soup = BeautifulSoup(html_doc, 'html.parser')
     tables = soup.find_all('table')
@@ -366,7 +366,7 @@ def sep():
 
 def sena():
     url = "https://www.samsung.com/se/support/smart-service-repair/"
-    html_doc = requests.get(url).text
+    html_doc = requests.get(url, verify = False).text
     subs = 'SENA'
     soup = BeautifulSoup(html_doc, 'html.parser')
     tables = soup.find_all('table')
@@ -409,7 +409,7 @@ def sena():
 
 def sesg():
     url = "https://www.samsung.com/ch/support/mobile-devices/display-reparaturkosten/"
-    html_doc = requests.get(url).text
+    html_doc = requests.get(url, verify = False).text
     subs = 'SESG'
     soup = BeautifulSoup(html_doc, 'html.parser')
     tables = soup.find_all('table')
@@ -466,7 +466,7 @@ def sesg():
 
 def sela():
     url = "https://www.samsung.com/latin/support/PreciosOWPanama/"
-    html_doc = requests.get(url).text
+    html_doc = requests.get(url, verify = False).text
     subs = "SELA"
 
     pattern = re.compile(r'items:\s*\[(.*?)\]', re.DOTALL)
@@ -499,7 +499,7 @@ def sela():
 
 def sena():
     url = "https://www.samsung.com/se/support/smart-service-repair/"
-    html_doc = requests.get(url).text
+    html_doc = requests.get(url, verify = False).text
     subs = 'SENA'
     soup = BeautifulSoup(html_doc, 'html.parser')
     tables = soup.find_all('table')
