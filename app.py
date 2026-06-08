@@ -17,7 +17,8 @@ os.environ['HTTPS_PROXY'] = 'http://168.219.61.252:8080'
 os.environ['NO_PROXY'] = 'localhost,127.0.0.1,.sec.samsung.net'
 
 # Exchange Rate
-rate_df = pd.read_excel("exchange_rate.xlsx")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+rate_df = pd.read_excel(os.path.join(BASE_DIR,"exchange_rate.xlsx"))
 current_month = datetime.now().month
 if 1 <= current_month <= 3: target_q = "Q1"
 elif 4 <= current_month <= 6: target_q = "Q2"
@@ -554,6 +555,7 @@ def model_clean(name):
         series_part = match.group(1).strip()
         extra_part = match.group(3).strip()
         extra_part = re.sub(r'\(.*\)|5G|LTE|SM-[A-Z0-9]+|^\-|^\s+', '', extra_part, flags=re.I).strip()
+        extra_part = re.sub(r'\s*plus$', )
 
         full_model = f"{series_part} {extra_part}".strip().upper()
         return f"{full_model}{display_info}"
@@ -569,21 +571,28 @@ is_empty = final_df['Series'].isnull() | (final_df['Series'] == "")
 final_df.loc[is_empty & final_df['Clean_Model'].str.lower().str.startswith('s'), 'Series'] = "Galaxy S"
 final_df.loc[is_empty & final_df['Clean_Model'].str.lower().str.startswith('a'), 'Series'] = "Galaxy A"
 final_df.loc[is_empty & final_df['Clean_Model'].str.lower().str.startswith('m'), 'Series'] = "Galaxy M"
-final_df.loc[is_empty & final_df['Clean_Model'].str.lower().str.startswith('note'), 'Series'] = "Galaxy Note"
 final_df.loc[is_empty & final_df['Clean_Model'].str.lower().str.startswith('z f'), 'Series'] = "Galaxy Z"
 final_df['Series'] = final_df['Series'].fillna('Others').replace('', 'Others')
 
+# S, Z, A, M 시리즈만 남김
+final_df = final_df[final_df['Series'].isin(['Galaxy S', 'Galaxy A', 'Galaxy M', 'Galaxy Z'])]
+A_condition = ((final_df['Series']=='Galaxy S')&(final_df['Clean_Model']=='A56'))
+M_condition = ((final_df['Series']=='Galaxy S')&(final_df['Clean_Model']=='M56'))
+S_condition = ((final_df['Series']=='Galaxy S')&(final_df['Clean_Model'].str[:3].isin(['S24','S25','S26'])))
+Z_allowed = ['d6', 'd 6', 'd7', 'd 7', 'd8', 'd 8', 'p6', 'p 6', 'p7', 'p 7', 'p8', 'p 8']
+Z_condition = ((final_df['Series']=='Galaxy Z')&(final_df['Clean_Model'].str.contains('|'.join(Z_allowed), case=False, na=False)))
+final_df = final_df[A_condition | M_condition | S_condition | Z_condition]
+
 # 후처리 - Repair Type
+Type_allowed = ['Screen Repair', 'Module Replacement', 'Pantalla', 'Somente Tela']
+final_df = final_df[final_df['Repair Type'].str.contains('|'.join(Type_allowed), case=False, na=False)]
 
-# S, Z, A 시리즈만 남김
-final_df = final_df[final_df['Series'].isin(['Galaxy S', 'Galaxy A', 'Galaxy Z'])]
-
+# ------------------- DB 생성 --------------------
 today_date = datetime.now().strftime("%Y%m%d")
 final_df['run_date'] = today_date
-final_df.to_excel(f"result_{today_date}.xlsx", index=False)
+final_df.to_excel(os.path.join(BASE_DIR,f"result_{today_date}.xlsx"), index=False)
 
-# ------------------- DB (SQLite) --------------------
-conn = sqlite3.connect("OOWrepairprice.db")
+conn = sqlite3.connect(os.path.join(BASE_DIR,"OOWrepairprice.db"))
 cursor = conn.cursor()
 
 # 오늘 데이터 삭제
@@ -593,23 +602,8 @@ cursor.execute("""
                """, (today_date,))
 conn.commit()
 
-final_df.to_sql(
-    name="OOWrepairprice",
-    con=conn,
-    if_exists="append",
-    index=False
-)
-
-export_df = pd.read_sql(
-    "SELECT * FROM OOWrepairprice",
-    conn
-)
-
-export_df.to_csv(
-    "OOWrepairprice.csv",
-    index = False,
-    encoding= "utf-8-sig"
-)
-
+final_df.to_sql(name="OOWrepairprice", con=conn, if_exists="append", index=False)
+export_df = pd.read_sql("SELECT * FROM OOWrepairprice",conn)
+export_df.to_excel(os.path.join(BASE_DIR,"OOWrepairprice.xlsx"), index = False,)
 conn.close()
 print("DB 저장 완료")
